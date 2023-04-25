@@ -6,74 +6,67 @@ const tableName = process.env.TABLE_NAME;
 
 // Entrypoint for Lambda Function
 exports.handler = function (event, context, callback) {
-    const requestItems = buildRequestItems(event.Records);
-    const requests = buildRequests(requestItems);
+  const requestItems = buildRequestItems(event.Records);
+  const requests = buildRequests(requestItems);
 
-    Promise.all(requests)
-        .then(() =>
-            callback(null, `Delivered ${event.Records.length} records`)
-        )
-        .catch(callback);
+  Promise.all(requests)
+    .then(() => callback(null, `Delivered ${event.Records.length} records`))
+    .catch(callback);
 };
 
 // Build DynamoDB request payload
 
 function buildRequestItems(records) {
-    return records.map((record) => {
-        const json = Buffer.from(record.kinesis.data, "base64").toString(
-            "ascii"
-        );
-        const item = JSON.parse(json);
+  return records.map((record) => {
+    const json = Buffer.from(record.kinesis.data, "base64").toString("ascii");
+    const item = JSON.parse(json);
 
-        return {
-            PutRequest: {
-                Item: item,
-            },
-        };
-    });
+    return {
+      PutRequest: {
+        Item: item,
+      },
+    };
+  });
 }
 
 function buildRequests(requestItems) {
-    const requests = [];
-    // Batch Write 25 request items from the beginning of the list at a time
-    while (requestItems.length > 0) {
-        const request = batchWrite(requestItems.splice(0, 25));
+  const requests = [];
+  // Batch Write 25 request items from the beginning of the list at a time
+  while (requestItems.length > 0) {
+    const request = batchWrite(requestItems.splice(0, 25));
 
-        requests.push(request);
-    }
+    requests.push(request);
+  }
 
-    return requests;
+  return requests;
 }
 
 // Batch write items into DynamoDB table using DynamoDB API
 function batchWrite(requestItems, attempt = 0) {
-    const params = {
-        RequestItems: {
-            [tableName]: requestItems,
-        },
-    };
+  const params = {
+    RequestItems: {
+      [tableName]: requestItems,
+    },
+  };
 
-    let delay = 0;
+  let delay = 0;
 
-    if (attempt > 0) {
-        delay = 50 * Math.pow(2, attempt);
-    }
+  if (attempt > 0) {
+    delay = 50 * Math.pow(2, attempt);
+  }
 
-    return new Promise(function (resolve, reject) {
-        setTimeout(function () {
-            dynamoDB
-                .batchWrite(params)
-                .promise()
-                .then(function (data) {
-                    if (data.UnprocessedItems.hasOwnProperty(tableName)) {
-                        return batchWrite(
-                            data.UnprocessedItems[tableName],
-                            attempt + 1
-                        );
-                    }
-                })
-                .then(resolve)
-                .catch(reject);
-        }, delay);
-    });
+  return new Promise(function (resolve, reject) {
+    setTimeout(function () {
+      dynamoDB
+        .batchWrite(params)
+        .promise()
+        .then(function (data) {
+          if (data.UnprocessedItems.hasOwnProperty(tableName)) {
+            return batchWrite(data.UnprocessedItems[tableName], attempt + 1);
+          }
+        })
+        .then(resolve)
+        .catch(reject);
+    }, delay);
+  });
 }
