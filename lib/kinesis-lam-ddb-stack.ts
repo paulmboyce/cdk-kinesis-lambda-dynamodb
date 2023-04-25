@@ -26,8 +26,8 @@ export class KinesisLamDdbStack extends cdk.Stack {
       },
       tableName: "UnicornSensorData",
       billingMode: ddb.BillingMode.PROVISIONED,
-      readCapacity: 5,
-      writeCapacity: 5,
+      readCapacity: 2,
+      writeCapacity: 2,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // ** NOT recommended for production code **
     });
 
@@ -67,11 +67,11 @@ export class KinesisLamDdbStack extends cdk.Stack {
     );
     lambdaFn.addEventSource(
       new KinesisEventSource(stream, {
-        batchSize: 10,
+        batchSize: 30,
         maxBatchingWindow: cdk.Duration.seconds(15),
         startingPosition: lambda.StartingPosition.LATEST,
         onFailure: new SqsDlq(deadLetterQueue),
-        retryAttempts: 2,
+        retryAttempts: 1,
         bisectBatchOnError: true,
         maxRecordAge: cdk.Duration.seconds(60),
       })
