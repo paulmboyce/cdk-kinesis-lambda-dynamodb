@@ -27,6 +27,7 @@ function buildRequestItems(records) {
       console.log("Error record is = ", item);
       throw new Error("kaboom");
     }
+    console.log("Error record is good = ", item);
 
     return {
       PutRequest: {

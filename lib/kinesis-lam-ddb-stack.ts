@@ -72,6 +72,7 @@ export class KinesisLamDdbStack extends cdk.Stack {
         startingPosition: lambda.StartingPosition.LATEST,
         onFailure: new SqsDlq(deadLetterQueue),
         retryAttempts: 2,
+        bisectBatchOnError: true,
         maxRecordAge: cdk.Duration.seconds(60),
       })
     );
