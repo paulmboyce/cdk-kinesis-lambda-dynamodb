@@ -31,9 +31,13 @@ export class KinesisLamDdbStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY, // ** NOT recommended for production code **
     });
 
-    const deadLetterQueue = new sqs.Queue(this, "wildrydes-queue", {
-      queueName: "wildrydes-queue",
-    });
+    const deadLetterQueue = new sqs.Queue(
+      this,
+      "wildrydes-existing-DLQ-queue",
+      {
+        queueName: "wildrydes-queue",
+      }
+    );
 
     // Use an EXISTING role
     const lambdaRole = iam.Role.fromRoleArn(
@@ -54,6 +58,7 @@ export class KinesisLamDdbStack extends cdk.Stack {
         TABLE_NAME: ddbUnicornSensorData.tableName,
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
       },
+      logRetention: 3,
     });
     const stream = kinesis.Stream.fromStreamArn(
       this,
@@ -62,10 +67,12 @@ export class KinesisLamDdbStack extends cdk.Stack {
     );
     lambdaFn.addEventSource(
       new KinesisEventSource(stream, {
-        batchSize: 100, // default
+        batchSize: 10,
+        maxBatchingWindow: cdk.Duration.seconds(15),
         startingPosition: lambda.StartingPosition.LATEST,
         onFailure: new SqsDlq(deadLetterQueue),
-        retryAttempts: 0,
+        retryAttempts: 2,
+        maxRecordAge: cdk.Duration.seconds(60),
       })
     );
 
