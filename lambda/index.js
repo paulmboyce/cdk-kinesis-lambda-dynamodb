@@ -25,6 +25,7 @@ function buildRequestItems(records) {
     //Check for error and throw the error. This is more like a validation in your usecase
     if (item.InputData.toLowerCase().includes(ERROR_STRING)) {
       console.log("Error record is = ", item);
+      throw new Error("kaboom");
     }
 
     return {
