@@ -3,6 +3,7 @@
 const AWS = require("aws-sdk");
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const tableName = process.env.TABLE_NAME;
+const ERROR_STRING = "error";
 
 // Entrypoint for Lambda Function
 exports.handler = function (event, context, callback) {
@@ -20,6 +21,11 @@ function buildRequestItems(records) {
   return records.map((record) => {
     const json = Buffer.from(record.kinesis.data, "base64").toString("ascii");
     const item = JSON.parse(json);
+
+    //Check for error and throw the error. This is more like a validation in your usecase
+    if (item.InputData.toLowerCase().includes(ERROR_STRING)) {
+      console.log("Error record is = ", item);
+    }
 
     return {
       PutRequest: {
