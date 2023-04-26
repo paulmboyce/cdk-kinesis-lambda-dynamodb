@@ -31,13 +31,9 @@ export class KinesisLamDdbStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY, // ** NOT recommended for production code **
     });
 
-    const deadLetterQueue = new sqs.Queue(
-      this,
-      "wildrydes-existing-DLQ-queue",
-      {
-        queueName: "wildrydes-queue",
-      }
-    );
+    const deadLetterQueue = new sqs.Queue(this, "wildrydes-DLQ-queue", {
+      queueName: "wildrydes-queue",
+    });
 
     // Use an EXISTING role
     const lambdaRole = iam.Role.fromRoleArn(
