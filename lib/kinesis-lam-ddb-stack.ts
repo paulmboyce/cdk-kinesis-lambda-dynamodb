@@ -60,11 +60,12 @@ export class KinesisLamDdbStack extends cdk.Stack {
       },
       logRetention: 3,
     });
-    const stream = kinesis.Stream.fromStreamArn(
-      this,
-      "ExistingStream",
-      "arn:aws:kinesis:eu-west-1:174543029707:stream/wildrydes"
-    );
+
+    const stream = new kinesis.Stream(this, "wildrydes-stream", {
+      streamName: "wildrydes",
+      streamMode: kinesis.StreamMode.PROVISIONED,
+      shardCount: 1,
+    });
     lambdaFn.addEventSource(
       new KinesisEventSource(stream, {
         batchSize: 30,
@@ -87,6 +88,9 @@ export class KinesisLamDdbStack extends cdk.Stack {
     new cdk.CfnOutput(this, "LambdaFn.ARN", { value: lambdaFn.functionArn });
     new cdk.CfnOutput(this, "LambdaFn.Role.ARN", {
       value: lambdaFn.role!.roleArn,
+    });
+    new cdk.CfnOutput(this, "Kinesis.Stream.ARN", {
+      value: stream.streamArn,
     });
   }
 }
