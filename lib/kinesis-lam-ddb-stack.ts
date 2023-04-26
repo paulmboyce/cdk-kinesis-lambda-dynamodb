@@ -36,11 +36,11 @@ export class KinesisLamDdbStack extends cdk.Stack {
     });
 
     // Use an EXISTING role
-    const lambdaRole = iam.Role.fromRoleArn(
-      this,
-      "Existing-WildRydesStreamProcessorRole",
-      "arn:aws:iam::174543029707:role/WildRydesStreamProcessorRole"
-    );
+    // const lambdaRole = iam.Role.fromRoleArn(
+    //   this,
+    //   "Existing-WildRydesStreamProcessorRole",
+    //   "arn:aws:iam::174543029707:role/WildRydesStreamProcessorRole"
+    // );
 
     const lambdaFn = new lambda.Function(this, "Function", {
       functionName: "WildRydesStreamProcessor",
@@ -49,7 +49,7 @@ export class KinesisLamDdbStack extends cdk.Stack {
       deadLetterQueueEnabled: true,
       deadLetterQueue: deadLetterQueue,
       code: lambda.Code.fromAsset(join(__dirname, "../lambda")),
-      role: lambdaRole,
+      // role: lambdaRole,
       environment: {
         TABLE_NAME: ddbUnicornSensorData.tableName,
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
@@ -73,6 +73,10 @@ export class KinesisLamDdbStack extends cdk.Stack {
         maxRecordAge: cdk.Duration.seconds(60),
       })
     );
+
+    // set permissions: (NOTE: CDK will add SQS + Kinesis permissions because
+    //   they are connected in this CDK code)
+    ddbUnicornSensorData.grantWriteData(lambdaFn);
 
     new cdk.CfnOutput(this, "DeadLetterQueue.ARN:", {
       value: deadLetterQueue.queueArn,
