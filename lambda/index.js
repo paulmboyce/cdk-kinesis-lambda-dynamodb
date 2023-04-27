@@ -7,33 +7,59 @@ const ERROR_STRING = "error";
 
 // Entrypoint for Lambda Function
 exports.handler = function (event, context, callback) {
+  console.log("Num Kinesis Records received = ", event.Records.length);
+
   const requestItems = buildRequestItems(event.Records);
-  const requests = buildRequests(requestItems);
+  let reportFailures = null;
+
+  const requests = buildRequests(requestItems.data);
 
   Promise.all(requests)
-    .then(() => callback(null, `Delivered ${event.Records.length} records`))
+    .then(() => {
+      if (requestItems.failure?.sequenceNumber) {
+        reportFailures = {
+          batchItemFailures: [
+            {
+              itemIdentifier: requestItems.failure.sequenceNumber,
+            },
+          ],
+        };
+        callback(null, reportFailures);
+      } else {
+        callback(null, `Delivered ${event.Records.length} records`);
+      }
+    })
     .catch(callback);
 };
 
 // Build DynamoDB request payload
 
 function buildRequestItems(records) {
-  return records.map((record) => {
-    const json = Buffer.from(record.kinesis.data, "base64").toString("ascii");
-    const item = JSON.parse(json);
+  const result = { data: [], failure: {} };
+  try {
+    records.forEach((record) => {
+      const json = Buffer.from(record.kinesis.data, "base64").toString("ascii");
+      const item = JSON.parse(json);
+      const sequenceNumber = record.kinesis.sequenceNumber;
+      console.debug("TRY Seq #", sequenceNumber);
 
-    //Check for error and throw the error. This is more like a validation in your usecase
-    if (item.InputData.toLowerCase().includes(ERROR_STRING)) {
-      console.error("Error record is = ", item);
-      throw new Error("kaboom");
-    }
-
-    return {
-      PutRequest: {
-        Item: item,
-      },
-    };
-  });
+      //Check for error and throw the error. This is more like a validation in your usecase
+      if (item.InputData.toLowerCase().includes(ERROR_STRING)) {
+        console.debug("ERR Seq # ", sequenceNumber);
+        throw new Error(sequenceNumber);
+      }
+      result.data.push({
+        PutRequest: {
+          Item: item,
+        },
+      });
+    });
+  } catch (err) {
+    result.failure.sequenceNumber = err.message;
+  } finally {
+    console.log("RESULT:", result);
+    return result;
+  }
 }
 
 function buildRequests(requestItems) {

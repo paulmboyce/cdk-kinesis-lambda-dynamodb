@@ -65,12 +65,13 @@ export class KinesisLamDdbStack extends cdk.Stack {
     lambdaFn.addEventSource(
       new KinesisEventSource(stream, {
         batchSize: 30,
-        maxBatchingWindow: cdk.Duration.seconds(15),
+        maxBatchingWindow: cdk.Duration.seconds(30),
         startingPosition: lambda.StartingPosition.LATEST,
         onFailure: new SqsDlq(deadLetterQueue),
         retryAttempts: 1,
-        bisectBatchOnError: true,
-        maxRecordAge: cdk.Duration.seconds(60),
+        bisectBatchOnError: true, // allows split batch when an error is thrown and retry
+        reportBatchItemFailures: true, // is an efficiency on top of bisectBatchOnError, because allows retry to start at failed item, and not retry any prior items
+        maxRecordAge: cdk.Duration.seconds(300),
       })
     );
 
