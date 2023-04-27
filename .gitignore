@@ -8,3 +8,9 @@ node_modules
 .cdk.staging
 cdk.out
 cfn.yml
+
+# Go related files:
+go.mod
+go.sum
+# GO binaries:
+kinesis/bin

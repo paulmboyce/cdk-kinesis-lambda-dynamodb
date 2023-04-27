@@ -1,0 +1,31 @@
+// Javascript:
+// Initialize the Amazon Cognito credentials provider
+AWS.config.region = 'eu-west-1'; // Region
+AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: 'eu-west-1:ac0e256e-7367-4c88-912e-30e5cf97f8bb',
+});
+
+Identity pool ID 
+eu-west-1:ac0e256e-7367-4c88-912e-30e5cf97f8bb
+
+Create multiple producers:
+./producer -name Helefant & ./producer -name Giddy & ./producer -name Dumba & ./producer -name Nevis & ./producer -name Cyber & ./producer -name Jotty & ./producer -name Rumbas & ./producer -name Nelly & 
+
+FIND producers:
+ps -eaf | grep prod
+
+KILL Many producers:
+for pid in $(ps -ef | awk '/producer/ {print $2}'); do kill -9 $pid; done
+
+
+alias:
+alias gs='git status'
+alias gd='git diff'
+alias gpush='git push'
+alias gcm='git commit'
+alias gco='git checkout'
+alias gpull='git pull'
+
+echo $SHELL
+vim ~/.bash_profile 
+source ~/.bash_profile   
