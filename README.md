@@ -1,8 +1,12 @@
-# Welcome to your CDK TypeScript project
+# BAsic AWS Kinesis & Lambda & DynamoDB Project
 
-This is a blank project for CDK development with TypeScript.
+The kinesis consumer and producer are originally based on code at build
+https://data-processing.serverlessworkshops.io/client/producer.go 
+https://data-processing.serverlessworkshops.io/client/consumer.go 
+from AWS tutorial https://data-processing.serverlessworkshops.io/
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+The rest is CDK code to build the infrastructure for the workshop
+
 
 ## Useful commands
 
