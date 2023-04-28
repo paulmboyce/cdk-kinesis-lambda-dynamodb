@@ -42,6 +42,24 @@ export class KinesisLamDdbStack extends cdk.Stack {
     //   "arn:aws:iam::174543029707:role/WildRydesStreamProcessorRole"
     // );
 
+    const lambdaRole = new iam.Role(
+      this,
+      "WildRydesStreamProcessorExecutionRole",
+      {
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        description: "Role to access kinesis and ",
+        roleName: "WildRydesStreamProcessorExecutionRole",
+      }
+    );
+
+    lambdaRole.addManagedPolicy(
+      iam.ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "Apply.AWSLambdaKinesisExecutionRole",
+        "arn:aws:iam::aws:policy/service-role/AWSLambdaKinesisExecutionRole"
+      )
+    );
+
     const lambdaFn = new lambda.Function(this, "Function", {
       functionName: "WildRydesStreamProcessor",
       runtime: lambda.Runtime.NODEJS_14_X,
@@ -49,7 +67,7 @@ export class KinesisLamDdbStack extends cdk.Stack {
       deadLetterQueueEnabled: true,
       deadLetterQueue: deadLetterQueue,
       code: lambda.Code.fromAsset(join(__dirname, "../lambda")),
-      // role: lambdaRole,
+      role: lambdaRole,
       environment: {
         TABLE_NAME: ddbUnicornSensorData.tableName,
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
@@ -62,21 +80,50 @@ export class KinesisLamDdbStack extends cdk.Stack {
       streamMode: kinesis.StreamMode.PROVISIONED,
       shardCount: 1,
     });
-    lambdaFn.addEventSource(
-      new KinesisEventSource(stream, {
-        batchSize: 30,
-        maxBatchingWindow: cdk.Duration.seconds(30),
-        startingPosition: lambda.StartingPosition.LATEST,
-        onFailure: new SqsDlq(deadLetterQueue),
-        retryAttempts: 1,
-        bisectBatchOnError: true, // allows split batch when an error is thrown and retry
-        reportBatchItemFailures: true, // is an efficiency on top of bisectBatchOnError, because allows retry to start at failed item, and not retry any prior items
-        maxRecordAge: cdk.Duration.seconds(300),
+
+    // Kinesis Fan out: REQUIRED
+    const streamConsumerFanOut = new kinesis.CfnStreamConsumer(
+      this,
+      "Kinesis.Stream.FanOutConsumer",
+      {
+        streamArn: stream.streamArn,
+        consumerName: "wildrydes-stream-consumer",
+      }
+    );
+
+    // Kinesis Fan out: REQUIRED
+    lambdaRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: [streamConsumerFanOut.attrConsumerArn],
+        actions: ["kinesis:SubscribeToShard"],
       })
     );
 
-    // set permissions: (NOTE: CDK will add SQS + Kinesis permissions because
-    //   they are connected in this CDK code)
+    // KinesisEventSourceProps
+    const kinesisEventSourceBasicConfig = {
+      batchSize: 30,
+      maxBatchingWindow: cdk.Duration.seconds(30),
+      startingPosition: lambda.StartingPosition.LATEST,
+      onFailure: new SqsDlq(deadLetterQueue),
+      retryAttempts: 1,
+      bisectBatchOnError: true, // allows split batch when an error is thrown and retry
+      reportBatchItemFailures: true, // is an efficiency on top of bisectBatchOnError, because allows retry to start at failed item, and not retry any prior items
+      maxRecordAge: cdk.Duration.seconds(300),
+    };
+
+    // Kinesis Fan out: REQUIRED
+    lambdaFn.addEventSourceMapping("KinesisConsumer", {
+      ...kinesisEventSourceBasicConfig,
+      eventSourceArn: streamConsumerFanOut.attrConsumerArn,
+    });
+
+    // Kinesis Standard: (no fan out) REQUIRED
+    // Or simply use addEventSourceMapping() above, with eventSourceArn as stream ARN.
+    // lambdaFn.addEventSource(
+    //   new KinesisEventSource(stream,kinesisEventSourceBasicConfig )
+    // );
+
     ddbUnicornSensorData.grantWriteData(lambdaFn);
 
     new cdk.CfnOutput(this, "DeadLetterQueue.ARN:", {
